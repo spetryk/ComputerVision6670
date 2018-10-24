@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+### Coding adapted from Felix Yu: https://gist.github.com/flyyufelix/65018873f8cb2bbe95f429c474aa1294
 
 import sys
 sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
@@ -14,7 +15,7 @@ from sklearn.metrics import log_loss
 
 from custom_layers.scale_layer import Scale
 
-from load_cifar10 import load_cifar10_data
+from load_data import load_data
 
 import sys
 sys.setrecursionlimit(3000)
@@ -104,13 +105,13 @@ def resnet101_model(img_rows, img_cols, color_type=1, num_classes=None):
     Model Schema and layer naming follow that of the original Caffe implementation
     https://github.com/KaimingHe/deep-residual-networks
 
-    ImageNet Pretrained Weights 
+    ImageNet Pretrained Weights
     Theano: https://drive.google.com/file/d/0Byy2AcGyEVxfdUV1MHJhelpnSG8/view?usp=sharing
     TensorFlow: https://drive.google.com/file/d/0Byy2AcGyEVxfTmRRVmpGWDczaXM/view?usp=sharing
 
     Parameters:
       img_rows, img_cols - resolution of inputs
-      channel - 1 for grayscale, 3 for color 
+      channel - 1 for grayscale, 3 for color
       num_classes - number of class labels for our classification task
     """
     eps = 1.1e-5
@@ -180,12 +181,13 @@ if __name__ == '__main__':
 
     img_rows, img_cols = 224, 224 # Resolution of inputs
     channel = 3
-    num_classes = 10 
-    batch_size = 16 
+    num_classes = 2
+    split_ratio = 0.2;
+    batch_size = 16
     nb_epoch = 10
 
     # Load Cifar10 data. Please implement your own load_data() module for your own dataset
-    X_train, Y_train, X_valid, Y_valid = load_cifar10_data(img_rows, img_cols)
+    X_train, Y_train, X_valid, Y_valid = load_data(split_ratio)
 
     # Load our model
     model = resnet101_model(img_rows, img_cols, channel, num_classes)
