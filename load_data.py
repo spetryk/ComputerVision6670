@@ -15,9 +15,12 @@ def shuffle(images, labels):
 def split(images, labels, split_ratio):
     # split into training and validation sets
     n_y = len(labels)
-    split_index = np.round(split_ratio*n_y)
-    X_train =
-    X_valid =
+    split_index = np.int64(np.round(split_ratio*n_y))
+    X_train = images[split_index:,:,:,:]
+    X_valid = images[0:split_index,:,:,:]
+    y_train = labels[split_index:]
+    y_valid = labels[0:split_index]
+    return X_train, X_valid, y_train, y_valid
 
 def load_data(split_ratio):
     # load data from np files
@@ -25,7 +28,5 @@ def load_data(split_ratio):
     labels = np.load('../phidata/y_train.npy')
     # split into test/train
     simages, slabels = shuffle(images, labels)
-    split(images, labels, split_ratio)
-
-
-load_data(0.2)
+    X_train, X_valid, y_train, y_valid = split(images, labels, split_ratio)
+    return X_train, X_valid, y_train, y_valid

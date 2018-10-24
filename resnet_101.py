@@ -2,7 +2,7 @@
 ### Coding adapted from Felix Yu: https://gist.github.com/flyyufelix/65018873f8cb2bbe95f429c474aa1294
 
 import sys
-sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+#sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 from keras.models import Sequential
 from keras.optimizers import SGD
