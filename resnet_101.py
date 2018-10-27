@@ -188,11 +188,11 @@ if __name__ == '__main__':
     channel = 3
     num_classes = 3
     split_ratio = 0.2;
-    batch_size = 16
+    batch_size = 2
     nb_epoch = 1
 
     # Set num_imgs to None if you want to use all available data
-    num_imgs = 100
+    num_imgs = 10
 
     # Load structural data
     X_train, X_valid, Y_train, Y_valid, X_test = load_data(split_ratio, num_imgs)
@@ -246,7 +246,7 @@ if __name__ == '__main__':
     end = time.time()
     seconds_elapsed = end-start
 
-    f = open(curr_time + '_log.txt', 'a+')
+    f = open('log.txt', 'a+')
     f.write('\n' + curr_time + \
             '\n Mean: ' + str(datagen.mean) + \
             '\n Std: ' + str(datagen.std) + \
