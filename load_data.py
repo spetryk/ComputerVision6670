@@ -24,13 +24,22 @@ def split(images, labels, split_ratio):
     y_valid = labels[0:split_index]
     return X_train, X_valid, y_train, y_valid
 
-def load_data(split_ratio):
+def load_data(split_ratio, num_imgs=None):
     # load data from np files
-    images = np.load('../phidata/X_train.npy')
-    X_test = np.load('../phidata/X_test.npy')
-    labels = np.load('../phidata/y_train.npy')
-    one_hot = to_categorical(labels)
+    images = np.load('../phidata/X_train.npy', mmap_mode='r')
+    X_test = np.load('../phidata/X_test.npy', mmap_mode='r')
+    labels = np.load('../phidata/y_train.npy', mmap_mode='r')
+
     # split into test/train
-    simages, slabels = shuffle(images, one_hot)
+    if num_imgs is not None:
+        # Take only subset of imgs
+        one_hot = to_categorical(labels[:num_imgs])
+        simages, slabels = shuffle(images[:num_imgs], one_hot)
+        X_test_return = X_test[:num_imgs]
+    else:
+        one_hot = to_categorical(labels)
+        simages, slabels = shuffle(images, one_hot)
+        X_test_return = X_test
+
     X_train, X_valid, y_train, y_valid = split(simages, slabels, split_ratio)
-    return X_train, X_valid, y_train, y_valid, X_test
+    return X_train, X_valid, y_train, y_valid, X_test_return

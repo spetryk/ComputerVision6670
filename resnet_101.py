@@ -13,6 +13,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.models import Model
 from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import ModelCheckpoint, CSVLogger
 
 from sklearn.metrics import log_loss
 
@@ -22,6 +23,9 @@ from load_data import load_data
 
 import sys
 sys.setrecursionlimit(3000)
+import time
+import os
+import math
 
 def identity_block(input_tensor, kernel_size, filters, stage, block):
     '''The identity_block is the block that has no conv layer at shortcut
@@ -38,19 +42,19 @@ def identity_block(input_tensor, kernel_size, filters, stage, block):
     bn_name_base = 'bn' + str(stage) + block + '_branch'
     scale_name_base = 'scale' + str(stage) + block + '_branch'
 
-    x = Conv2D(nb_filter1, 1, 1, name=conv_name_base + '2a', bias=False)(input_tensor)
+    x = Conv2D(nb_filter1, (1, 1), name=conv_name_base + '2a', use_bias=False)(input_tensor)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
     x = Activation('relu', name=conv_name_base + '2a_relu')(x)
 
     x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(nb_filter2, kernel_size, kernel_size,
-                      name=conv_name_base + '2b', bias=False)(x)
+    x = Conv2D(nb_filter2, (kernel_size, kernel_size),
+                      name=conv_name_base + '2b', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
     x = Activation('relu', name=conv_name_base + '2b_relu')(x)
 
-    x = Conv2D(nb_filter3, 1, 1, name=conv_name_base + '2c', bias=False)(x)
+    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
 
@@ -75,25 +79,25 @@ def conv_block(input_tensor, kernel_size, filters, stage, block, strides=(2, 2))
     bn_name_base = 'bn' + str(stage) + block + '_branch'
     scale_name_base = 'scale' + str(stage) + block + '_branch'
 
-    x = Conv2D(nb_filter1, 1, 1, subsample=strides,
-                      name=conv_name_base + '2a', bias=False)(input_tensor)
+    x = Conv2D(nb_filter1, (1, 1), subsample=strides,
+                      name=conv_name_base + '2a', use_bias=False)(input_tensor)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2a')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2a')(x)
     x = Activation('relu', name=conv_name_base + '2a_relu')(x)
 
     x = ZeroPadding2D((1, 1), name=conv_name_base + '2b_zeropadding')(x)
-    x = Conv2D(nb_filter2, kernel_size, kernel_size,
-                      name=conv_name_base + '2b', bias=False)(x)
+    x = Conv2D(nb_filter2, (kernel_size, kernel_size),
+                      name=conv_name_base + '2b', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2b')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2b')(x)
     x = Activation('relu', name=conv_name_base + '2b_relu')(x)
 
-    x = Conv2D(nb_filter3, 1, 1, name=conv_name_base + '2c', bias=False)(x)
+    x = Conv2D(nb_filter3, (1, 1), name=conv_name_base + '2c', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '2c')(x)
     x = Scale(axis=bn_axis, name=scale_name_base + '2c')(x)
 
-    shortcut = Conv2D(nb_filter3, 1, 1, subsample=strides,
-                             name=conv_name_base + '1', bias=False)(input_tensor)
+    shortcut = Conv2D(nb_filter3, (1, 1), subsample=strides,
+                             name=conv_name_base + '1', use_bias=False)(input_tensor)
     shortcut = BatchNormalization(epsilon=eps, axis=bn_axis, name=bn_name_base + '1')(shortcut)
     shortcut = Scale(axis=bn_axis, name=scale_name_base + '1')(shortcut)
 
@@ -129,7 +133,7 @@ def resnet101_model(img_rows, img_cols, color_type=1, num_classes=None):
       img_input = Input(shape=(color_type, img_rows, img_cols), name='data')
 
     x = ZeroPadding2D((3, 3), name='conv1_zeropadding')(img_input)
-    x = Conv2D(64, 7, 7, subsample=(2, 2), name='conv1', bias=False)(x)
+    x = Conv2D(64, (7, 7), subsample=(2, 2), name='conv1', use_bias=False)(x)
     x = BatchNormalization(epsilon=eps, axis=bn_axis, name='bn_conv1')(x)
     x = Scale(axis=bn_axis, name='scale_conv1')(x)
     x = Activation('relu', name='conv1_relu')(x)
@@ -180,8 +184,6 @@ def resnet101_model(img_rows, img_cols, color_type=1, num_classes=None):
 
 if __name__ == '__main__':
 
-    # Example to fine-tune on 3000 samples from Cifar10
-
     img_rows, img_cols = 224, 224 # Resolution of inputs
     channel = 3
     num_classes = 3
@@ -189,22 +191,79 @@ if __name__ == '__main__':
     batch_size = 16
     nb_epoch = 1
 
-    # Load Cifar10 data. Please imple0ment your own load_data() module for your own dataset
-    X_train, X_valid, Y_train, Y_valid, X_test = load_data(split_ratio)
+    # Set num_imgs to None if you want to use all available data
+    num_imgs = 100
+
+    # Load structural data
+    X_train, X_valid, Y_train, Y_valid, X_test = load_data(split_ratio, num_imgs)
     print(Y_valid.shape)
 
     # Load our model
     model = resnet101_model(img_rows, img_cols, channel, num_classes)
 
-    # Start Fine-tuning
+    # Set up model saving
+    curr_time = time.strftime("%Y%m%d-%H%M%S")
+    if not os.path.isdir('saved_models'):
+        os.makedirs('saved_models')
+    filepath="saved_models/"+curr_time+"weights-improvement-{epoch:02d}-{val_acc:.2f}.hdf5"
+    checkpoint = ModelCheckpoint(filepath,
+                                 monitor='val_acc',
+                                 verbose=1,
+                                 save_best_only=True,
+                                 mode='max',
+                                 save_weights_only=False)
 
-    model.fit(X_train, Y_train,
-              batch_size=batch_size,
-              nb_epoch=nb_epoch,
-              shuffle=True,
-              verbose=1,
-              validation_data=(X_valid, Y_valid)
-              )
+    # Create csv file to log training
+    csv_logger = CSVLogger(curr_time + 'history.csv', append=True)
+
+    callbacks_list = [checkpoint, csv_logger]
+
+    # Augment data with flips horizontally + vertically, and normalization
+    datagen = ImageDataGenerator(
+        rotation_range=20,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        fill_mode='constant',
+        cval=0
+    )
+
+    datagen.fit(X_train)
+
+    total_imgs = math.floor(len(X_train)*1.5)
+
+    start = time.time()
+    # Start Fine-tuning
+    model.fit_generator(datagen.flow(X_train, Y_train,
+                                     batch_size=batch_size),
+                                     #save_to_dir='augmented_imgs/norm_horz_vert_rot_shift_0'),
+                        steps_per_epoch = total_imgs,
+                        epochs=nb_epoch,
+                        shuffle=True,
+                        verbose=1,
+                        validation_data=(X_valid, Y_valid),
+                        callbacks=callbacks_list)
+
+    end = time.time()
+    seconds_elapsed = end-start
+
+    f = open(curr_time + '_log.txt', 'a+')
+    f.write('\n' + curr_time + \
+            '\n Mean: ' + str(datagen.mean) + \
+            '\n Std: ' + str(datagen.std) + \
+            '\n Num train images (including augmented): ' + str(total_imgs) + \
+            '\n Num epochs: ' + str(nb_epoch) + \
+            '\n Time elapsed (minutes): ' + ('%.3f' % (seconds_elapsed/60))
+    )
+    f.close()
+
+
+    # model.fit(X_train, Y_train,
+    #           batch_size=batch_size,
+    #           nb_epoch=nb_epoch,
+    #           shuffle=True,
+    #           verbose=1,
+    #           validation_data=(X_valid, Y_valid)
+    #           )
 
     # Make predictions
     #print('make predictions')
