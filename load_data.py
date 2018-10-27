@@ -1,4 +1,6 @@
+from __future__ import absolute_import
 import numpy as np
+from keras.utils import to_categorical
 
 def shuffle(images, labels):
     # shuffle pairs of data
@@ -25,8 +27,10 @@ def split(images, labels, split_ratio):
 def load_data(split_ratio):
     # load data from np files
     images = np.load('../phidata/X_train.npy')
+    X_test = np.load('../phidata/X_test.npy')
     labels = np.load('../phidata/y_train.npy')
+    one_hot = to_categorical(labels)
     # split into test/train
-    simages, slabels = shuffle(images, labels)
-    X_train, X_valid, y_train, y_valid = split(images, labels, split_ratio)
-    return X_train, X_valid, y_train, y_valid
+    simages, slabels = shuffle(images, one_hot)
+    X_train, X_valid, y_train, y_valid = split(simages, slabels, split_ratio)
+    return X_train, X_valid, y_train, y_valid, X_test

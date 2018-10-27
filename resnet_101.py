@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 ### Coding adapted from Felix Yu: https://gist.github.com/flyyufelix/65018873f8cb2bbe95f429c474aa1294
-
 import sys
+import numpy as np
+import csv
 #sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 from keras.models import Sequential
@@ -156,7 +157,7 @@ def resnet101_model(img_rows, img_cols, color_type=1, num_classes=None):
 
 
     # Use pre-trained weights for Tensorflow backend
-    weights_path = 'models/resnet101_weights_tf.h5'
+    weights_path = '../phidata/resnet101_weights_tf.h5'
 
     model.load_weights(weights_path, by_name=True)
 
@@ -181,28 +182,43 @@ if __name__ == '__main__':
 
     img_rows, img_cols = 224, 224 # Resolution of inputs
     channel = 3
-    num_classes = 2
+    num_classes = 3
     split_ratio = 0.2;
     batch_size = 16
-    nb_epoch = 10
+    nb_epoch = 1
 
-    # Load Cifar10 data. Please implement your own load_data() module for your own dataset
-    X_train, Y_train, X_valid, Y_valid = load_data(split_ratio)
+    # Load Cifar10 data. Please imple0ment your own load_data() module for your own dataset
+    X_train, X_valid, Y_train, Y_valid, X_test = load_data(split_ratio)
+    print(Y_valid.shape)
 
     # Load our model
     model = resnet101_model(img_rows, img_cols, channel, num_classes)
 
     # Start Fine-tuning
+
     model.fit(X_train, Y_train,
               batch_size=batch_size,
               nb_epoch=nb_epoch,
               shuffle=True,
               verbose=1,
-              validation_data=(X_valid, Y_valid),
+              validation_data=(X_valid, Y_valid)
               )
 
     # Make predictions
-    predictions_valid = model.predict(X_valid, batch_size=batch_size, verbose=1)
+    #print('make predictions')
+    #predictions_valid = model.predict(X_valid, batch_size=batch_size, verbose=1)
 
     # Cross-entropy loss score
-    score = log_loss(Y_valid, predictions_valid)
+    #score = log_loss(Y_valid, predictions_valid)
+
+    # Make predictions
+    predictions_test = model.predict(X_test, batch_size=batch_size, verbose=1)
+    print(predictions_test)
+    predictions_test = np.argmax(predictions_test, axis=1)
+    print(predictions_test)
+
+    with open('phipredictions.csv', 'w') as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['Index', 'Pred'])
+        for i in range(len(X_test)):
+            writer.writerow([i, predictions_test[i]])
