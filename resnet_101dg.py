@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 ### Coding adapted from Felix Yu: https://gist.github.com/flyyufelix/65018873f8cb2bbe95f429c474aa1294
 import sys
+from matplotlib import pyplot as plt
 import numpy as np
 import csv
 import math
+import os
 #sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
 
 import keras
@@ -258,7 +260,7 @@ if __name__ == '__main__':
     split_ratio = 0.2
     batch_size = 8
     nb_epoch = 50
-    aug = False
+    aug = True
 
     # Set num_imgs to None if you want to use all available data
     num_imgs = None
@@ -286,12 +288,11 @@ if __name__ == '__main__':
     predictions=prediction_history()
 
     datagen = ImageDataGenerator(
-        rotation_range=10,
-        width_shift_range=0.2,
-        height_shift_range=0.2,
+        rotation_range=5,
+        width_shift_range=0.15,
+        height_shift_range=0.15,
         horizontal_flip=True,
         fill_mode='constant',
-        zca_whitening=True,
         cval=0
     )
 
@@ -299,8 +300,14 @@ if __name__ == '__main__':
         aug_imgs = len(X_train)*0.5
         i = 0
         X_list, Y_list = [], []
+        my_path = os.path.abspath(__file__)
         for X_aug, Y_aug in datagen.flow(X_train, Y_train, batch_size=1):
             i += 1
+            if i < 10:
+                print(X_aug)
+                plt.imshow(np.squeeze(X_aug).astype(np.int32), interpolation='nearest')
+                plt.show()
+                plt.savefig('datagenfigs/fig'+str(i)+'.png')
             X_list.append(np.squeeze(X_aug))
             Y_list.append(np.squeeze(Y_aug))
             if i > aug_imgs:
